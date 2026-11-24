@@ -1,0 +1,12 @@
+import { Router } from "express";
+import { asyncHandler } from "../utils/AppError.js";
+import { uploadResume } from "../middleware/upload.js";
+import { validateAnalyze } from "../middleware/validate.js";
+import { extract } from "../controllers/resumeController.js";
+import { analyze } from "../controllers/analysisController.js";
+import { health } from "../controllers/healthController.js";
+const r = Router();
+r.get("/health", health);
+r.post("/extract", uploadResume, asyncHandler(extract));
+r.post("/analyze", validateAnalyze, asyncHandler(analyze));
+export default r;

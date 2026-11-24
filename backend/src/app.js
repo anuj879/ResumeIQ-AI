@@ -1,0 +1,14 @@
+import express from "express";
+import cors from "cors";
+import { config } from "./config/env.js";
+import { apiLimiter } from "./middleware/rateLimit.js";
+import { notFound, errorHandler } from "./middleware/errorHandler.js";
+import routes from "./routes/index.js";
+const app = express();
+app.disable("x-powered-by");
+app.use(cors({ origin: config.origin }));
+app.use(express.json({ limit: "400kb" }));
+app.use("/api", apiLimiter, routes);
+app.use(notFound);
+app.use(errorHandler);
+export default app;
