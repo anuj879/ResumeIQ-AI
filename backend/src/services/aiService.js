@@ -8,6 +8,48 @@ let client;
 
 const getClient = () =>
   (client ??= new GoogleGenAI({ apiKey: config.apiKey }));
+async function runGroq(t, input) {
+  if (!config.groqApiKey) {
+    throw new Error("GROQ_API_KEY is missing");
+  }
+
+  const response = await fetch(
+    "https://api.groq.com/openai/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.groqApiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.groqModel,
+        messages: [
+          { role: "system", content: t.system },
+          {
+            role: "user",
+            content: buildUserContent(t, input),
+          },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.3,
+        max_tokens: 8192,
+      }),
+      signal: AbortSignal.timeout(config.aiTimeoutMs),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Groq API error ${response.status}: ${error}`);
+  }
+
+  const result = await response.json();
+  const raw = result.choices?.[0]?.message?.content;
+
+  if (!raw) throw new Error("Groq returned an empty response");
+
+  return parseJson(raw);
+}
 
 function parseJson(raw) {
   const s = raw.indexOf("{");
@@ -123,17 +165,16 @@ export function mapApiError(e) {
 }
 
 export async function runAnalysis(task, input) {
-  if (!config.apiKey) {
-    throw new AppError(
-      503,
-      "GEMINI_API_KEY is missing. Add it to your environment variables.",
-      "NO_API_KEY"
-    );
-  }
-
   const t = templates[task];
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  if (!t) {
+    throw new AppError(400, "Invalid analysis task.", "INVALID_TASK");
+  }
+
+  let geminiError = null;
+
+  // 1. Try Gemini first
+  if (config.apiKey) {
     try {
       const res = await getClient().models.generateContent({
         model: config.model,
@@ -158,7 +199,7 @@ export async function runAnalysis(task, input) {
           );
         }
 
-        throw new Error("empty response");
+        throw new Error("Gemini returned an empty response");
       }
 
       return validate(t, parseJson(raw));
@@ -166,24 +207,44 @@ export async function runAnalysis(task, input) {
     } catch (e) {
       if (e instanceof AppError) throw e;
 
-      if (isApiFailure(e)) {
-        console.error("GEMINI ERROR DETAILS:", {
-          status: e.status,
-          message: e.message,
-          name: e.name,
-          details: e.errorDetails,
-        });
+      geminiError = e;
 
-        throw mapApiError(e);
-      }
-
-      if (attempt === 1) {
-        throw new AppError(
-          502,
-          "The AI returned an unexpected response. Try again.",
-          "BAD_AI_OUTPUT"
-        );
-      }
+      console.error("GEMINI FAILED - TRYING GROQ:", {
+        status: e?.status,
+        message: e?.message,
+        name: e?.name,
+      });
     }
   }
+
+  // 2. Try Groq as fallback
+  if (config.groqApiKey) {
+    try {
+      console.log("Using Groq fallback...");
+
+      const result = await runGroq(t, input);
+
+      return validate(t, result);
+
+    } catch (e) {
+      console.error("GROQ ERROR:", e?.message);
+
+      throw new AppError(
+        503,
+        "AI services are temporarily unavailable. Please try again.",
+        "AI_PROVIDERS_UNAVAILABLE"
+      );
+    }
+  }
+
+  // 3. No fallback available
+  if (geminiError) {
+    throw mapApiError(geminiError);
+  }
+
+  throw new AppError(
+    503,
+    "No AI provider is configured. Check GEMINI_API_KEY and GROQ_API_KEY.",
+    "NO_AI_PROVIDER"
+  );
 }
