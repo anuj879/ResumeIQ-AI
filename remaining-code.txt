@@ -1,0 +1,888 @@
+]633;E;for f in frontend/src/App.jsx frontend/src/pages/Landing.jsx frontend/src/pages/Overview.jsx frontend/src/api.js frontend/src/pages/Report.jsx frontend/src/main.jsx\x3b do   echo ""\x3b   echo "========== $f =========="\x3b   cat "$f"\x3b done > remaining-code.txt;6a450fed-1dc5-48ab-96cf-d45fe9c4b95f]633;C
+========== frontend/src/App.jsx ==========
+
+import { useState, useEffect } from "react";
+import { Menu, X, Sparkles } from "lucide-react";
+import { health } from "./api";
+import { TABS } from "./lib/tabs";
+import Landing from "./pages/Landing";
+import Overview from "./pages/Overview";
+import Tool from "./pages/Tool";
+import Report from "./pages/Report";
+import Upload from "./pages/upload";
+function useRoute() {
+  const get = () => (location.hash || "#/").replace(/^#\/?/, "");
+
+  const [route, setRoute] = useState(get);
+
+  useEffect(() => {
+    const handleRoute = () => {
+      setRoute(get());
+      window.scrollTo(0, 0);
+    };
+
+    window.addEventListener("hashchange", handleRoute);
+    return () => window.removeEventListener("hashchange", handleRoute);
+  }, []);
+
+  return route;
+}
+
+function ComingSoon({ tab }) {
+  const Icon = tab.icon;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/15 text-violet-300">
+          <Icon size={24} />
+        </div>
+
+        <h1 className="text-3xl font-bold">{tab.label}</h1>
+
+        <p className="mt-2 text-muted">
+          Your AI-powered {tab.label.toLowerCase()} workspace.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-8">
+        <Sparkles className="mb-4 text-violet-300" size={28} />
+
+        <h2 className="text-xl font-semibold">Coming soon</h2>
+
+        <p className="mt-2 text-sm text-muted">
+          This workspace is being prepared. Your existing resume analysis
+          features remain available.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const route = useRoute();
+
+  const [resume, setResume] = useState(null);
+  const [job, setJob] = useState("");
+  const [results, setResults] = useState({});
+  const [cfg, setCfg] = useState(null);
+  const [nav, setNav] = useState(false);
+
+  useEffect(() => {
+    health()
+      .then((response) => setCfg(response.aiConfigured))
+      .catch(() => setCfg(false));
+  }, []);
+
+  useEffect(() => {
+    setResults({});
+  }, [resume?.id]);
+if (route === "app/upload") {
+  return (
+    <Upload
+      resume={resume}
+      setResume={setResume}
+      onContinue={() => {
+        window.location.hash = "#/app/analysis";
+      }}
+    />
+  );
+}
+  if (!route.startsWith("app")) {
+    return <Landing />;
+  }
+
+  const tabId = route.split("/")[1];
+  const tab = TABS.find((item) => item.id === tabId) || TABS[0];
+
+  const closeNav = () => setNav(false);
+
+  const page =
+    tab.id === "overview" ? (
+      <Overview {...{ resume, setResume, results, cfg }} />
+    ) : tab.id === "history" ? (
+      <Report results={results} resume={resume} />
+    ) : ["chatbot", "voice", "templates"].includes(tab.id) ? (
+      <ComingSoon tab={tab} />
+    ) : (
+      <Tool
+        key={tab.id}
+        {...{ tab, resume, job, setJob, results, setResults }}
+      />
+    );
+
+  return (
+    <div className="min-h-screen md:flex">
+      <header className="no-print sticky top-0 z-40 flex items-center justify-between border-b border-white/10 bg-[#090b18] px-5 py-4 text-white md:hidden">
+        <a href="#/" className="text-lg font-bold">
+          ResumeIQ <span className="text-violet-400">AI</span>
+        </a>
+
+        <button
+          aria-label="Toggle navigation"
+          onClick={() => setNav(!nav)}
+        >
+          {nav ? <X size={23} /> : <Menu size={23} />}
+        </button>
+      </header>
+
+      {nav && (
+        <button
+          aria-label="Close navigation"
+          onClick={closeNav}
+          className="fixed inset-0 z-20 bg-black/60 md:hidden"
+        />
+      )}
+
+      <aside
+        className={`no-print fixed inset-y-0 left-0 z-30 w-72 border-r border-white/10 bg-[#0b0d1c] p-5 text-white transition-transform duration-300 md:sticky md:top-0 md:block md:h-screen md:translate-x-0 ${
+          nav ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <a href="#/" className="mb-9 flex items-center gap-2 text-xl font-bold">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/20 text-violet-300">
+            <Sparkles size={20} />
+          </span>
+
+          ResumeIQ <span className="text-violet-400">AI</span>
+        </a>
+
+        <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">
+          Workspace
+        </p>
+
+        <nav className="flex flex-col gap-1">
+          {TABS.map((item) => {
+            const Icon = item.icon;
+            const active = item.id === tab.id;
+
+            return (
+              <a
+                key={item.id}
+                href={`#/app/${item.id}`}
+                onClick={closeNav}
+                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition ${
+                  active
+                    ? "border border-violet-400/20 bg-violet-500/15 text-violet-200"
+                    : "text-white/65 hover:bg-white/[0.06] hover:text-white"
+                }`}
+              >
+                <Icon size={18} />
+                {item.label}
+
+                {active && (
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-violet-400" />
+                )}
+              </a>
+            );
+          })}
+        </nav>
+
+        <div className="absolute bottom-5 left-5 right-5 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+          <p className="text-xs font-semibold text-white/80">
+            AI Career Workspace
+          </p>
+
+          <p className="mt-1 text-[11px] text-white/40">
+            Your career journey, intelligently organized.
+          </p>
+        </div>
+      </aside>
+
+      <main className="min-w-0 flex-1 bg-[#090b18] text-white">
+        <div className="mx-auto w-full max-w-7xl p-5 md:p-9">
+          {page}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+
+========== frontend/src/pages/Landing.jsx ==========
+
+import {
+  ArrowRight,
+  Sparkles,
+  FileSearch,
+  WandSparkles,
+  BriefcaseBusiness,
+  MessageSquare,
+  Mic,
+  ShieldCheck,
+  Zap,
+  Target,
+  Menu,
+  X,
+} from "lucide-react";
+import { useState } from "react";
+
+const features = [
+  {
+    icon: FileSearch,
+    title: "Resume Intelligence",
+    description:
+      "Understand your resume with AI-powered analysis, ATS insights and actionable recommendations.",
+  },
+  {
+    icon: WandSparkles,
+    title: "Resume Improvement",
+    description:
+      "Improve your professional summary, experience and skills with intelligent suggestions.",
+  },
+  {
+    icon: BriefcaseBusiness,
+    title: "Job Matching",
+    description:
+      "Compare your resume with job descriptions and discover how well your experience aligns.",
+  },
+  {
+    icon: MessageSquare,
+    title: "AI Career Assistant",
+    description:
+      "Ask questions about your resume, career and interview preparation.",
+  },
+  {
+    icon: Mic,
+    title: "Voice AI Assistant",
+    description:
+      "Interact with your AI career workspace through a voice-based experience.",
+  },
+  {
+    icon: Target,
+    title: "Interview Preparation",
+    description:
+      "Practice HR and technical interviews with questions tailored to your target role.",
+  },
+];
+
+export default function Landing() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <div className="min-h-screen overflow-hidden bg-[#080A17] text-white">
+      {/* Background */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-40 top-20 h-96 w-96 rounded-full bg-violet-700/15 blur-[130px]" />
+        <div className="absolute -right-40 top-60 h-96 w-96 rounded-full bg-blue-600/15 blur-[130px]" />
+        <div className="absolute left-1/3 top-[650px] h-80 w-80 rounded-full bg-purple-600/10 blur-[120px]" />
+        <div className="absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(255,255,255,.4)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.4)_1px,transparent_1px)] [background-size:65px_65px]" />
+      </div>
+
+      {/* Navbar */}
+      <header className="relative z-30 border-b border-white/[0.07] bg-[#080A17]/75 backdrop-blur-xl">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 md:px-8">
+          <a href="#/" className="flex items-center gap-2.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-300/30 bg-gradient-to-br from-violet-500/30 to-blue-500/20 text-violet-200 shadow-lg shadow-violet-900/30">
+              <Sparkles size={21} />
+            </div>
+            <span className="text-xl font-bold tracking-tight">
+              ResumeIQ <span className="text-violet-400">AI</span>
+            </span>
+          </a>
+
+          <div className="hidden items-center gap-8 text-sm text-white/60 md:flex">
+            <a href="#features" className="transition hover:text-white">Product</a>
+            <a href="#features" className="transition hover:text-white">Features</a>
+            <a href="#how-it-works" className="transition hover:text-white">How it works</a>
+            <a href="#footer" className="transition hover:text-white">Resources</a>
+          </div>
+
+          <div className="hidden items-center gap-5 md:flex">
+            <a
+              href="#/app/overview"
+              className="text-sm text-white/70 transition hover:text-white"
+            >
+              Login
+            </a>
+            <a
+              href="#/app/overview"
+              className="rounded-xl border border-violet-300/30 bg-gradient-to-r from-violet-500/90 to-blue-500/90 px-5 py-2.5 text-sm font-semibold shadow-lg shadow-violet-900/30 transition hover:-translate-y-0.5 hover:brightness-110"
+            >
+              Get Started <ArrowRight className="ml-1 inline" size={15} />
+            </a>
+          </div>
+
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="text-white md:hidden"
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? <X /> : <Menu />}
+          </button>
+        </nav>
+
+        {menuOpen && (
+          <div className="space-y-4 border-t border-white/10 bg-[#0D1021] p-5 md:hidden">
+            <a onClick={() => setMenuOpen(false)} href="#features" className="block text-sm text-white/70">Features</a>
+            <a onClick={() => setMenuOpen(false)} href="#how-it-works" className="block text-sm text-white/70">How it works</a>
+            <a onClick={() => setMenuOpen(false)} href="#footer" className="block text-sm text-white/70">Resources</a>
+            <a onClick={() => setMenuOpen(false)} href="#/app/overview" className="block rounded-xl bg-violet-600 p-3 text-center text-sm font-semibold">Get Started</a>
+          </div>
+        )}
+      </header>
+
+      {/* Hero */}
+      <main className="relative z-10">
+        <section className="relative mx-auto grid min-h-[690px] max-w-7xl items-center gap-14 px-5 py-20 md:grid-cols-2 md:px-8 md:py-28">
+          <div className="relative z-10">
+            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/[0.08] px-4 py-2 text-xs font-medium text-violet-200">
+              <Sparkles size={14} />
+              YOUR AI-POWERED CAREER WORKSPACE
+            </div>
+
+            <h1 className="max-w-2xl text-5xl font-bold leading-[1.12] tracking-tight md:text-6xl lg:text-[68px]">
+              Your AI workspace for{" "}
+              <span className="bg-gradient-to-r from-violet-300 via-purple-300 to-blue-300 bg-clip-text text-transparent">
+                faster decisions.
+              </span>
+            </h1>
+
+            <p className="mt-7 max-w-xl text-base leading-8 text-white/55 md:text-lg">
+              A smarter way to understand your resume, improve your career
+              profile and prepare for the opportunities ahead — all in one
+              intelligent workspace.
+            </p>
+
+            <div className="mt-9 flex flex-wrap gap-4">
+              <a
+                href="#/app/overview"
+                className="group rounded-xl border border-violet-200/40 bg-gradient-to-r from-violet-500 via-purple-500 to-blue-500 px-7 py-4 text-sm font-semibold shadow-[0_8px_35px_rgba(124,80,255,0.3)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_12px_45px_rgba(124,80,255,0.45)]"
+              >
+                Start Free Trial
+                <ArrowRight className="ml-2 inline transition group-hover:translate-x-1" size={17} />
+              </a>
+
+              <a
+                href="#features"
+                className="rounded-xl border border-white/15 bg-white/[0.04] px-7 py-4 text-sm font-semibold text-white/85 backdrop-blur-xl transition hover:border-violet-300/40 hover:bg-white/[0.08]"
+              >
+                Explore Features
+              </a>
+            </div>
+
+            <div className="mt-12 flex flex-wrap gap-x-7 gap-y-4 text-xs text-white/50">
+              <span className="flex items-center gap-2">
+                <ShieldCheck size={16} className="text-violet-300" />
+                AI-powered insights
+              </span>
+              <span className="flex items-center gap-2">
+                <Zap size={16} className="text-blue-300" />
+                Intelligent workflow
+              </span>
+              <span className="flex items-center gap-2">
+                <Target size={16} className="text-purple-300" />
+                Career-focused tools
+              </span>
+            </div>
+          </div>
+
+          {/* Holographic Workspace Visual */}
+          <div className="relative mx-auto flex min-h-[450px] w-full max-w-xl items-center justify-center">
+            <div className="absolute h-[350px] w-[350px] rounded-full bg-violet-600/20 blur-[100px]" />
+            <div className="absolute h-[300px] w-[300px] rounded-full border border-violet-300/10 shadow-[0_0_90px_rgba(120,90,255,0.14)]" />
+            <div className="absolute h-[235px] w-[235px] rounded-full border border-blue-300/15" />
+
+            <div className="absolute bottom-16 h-20 w-[90%] rounded-[100%] bg-gradient-to-r from-blue-500/10 via-violet-500/35 to-pink-500/10 blur-2xl" />
+
+            <div className="relative z-10 w-[85%] rounded-2xl border border-violet-200/20 bg-gradient-to-br from-white/[0.12] via-[#17152F]/90 to-[#10182D]/90 p-5 shadow-[0_25px_100px_rgba(75,45,160,0.35)] backdrop-blur-2xl md:p-6">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={17} className="text-violet-300" />
+                  <span className="text-sm font-semibold">AI Workspace</span>
+                </div>
+                <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] text-emerald-300">
+                  Ready
+                </span>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-400/15 text-violet-200">
+                      <FileSearch size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">Resume Intelligence</p>
+                      <p className="mt-1 text-[11px] text-white/40">Understand your profile</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full w-3/4 rounded-full bg-gradient-to-r from-violet-400 to-blue-400" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-blue-300/15 bg-blue-400/[0.07] p-4">
+                    <BriefcaseBusiness className="mb-3 text-blue-300" size={19} />
+                    <p className="text-xs font-semibold">Job Matching</p>
+                    <p className="mt-1 text-[10px] text-white/40">Find alignment</p>
+                  </div>
+                  <div className="rounded-xl border border-pink-300/15 bg-pink-400/[0.06] p-4">
+                    <WandSparkles className="mb-3 text-pink-300" size={19} />
+                    <p className="text-xs font-semibold">AI Improvement</p>
+                    <p className="mt-1 text-[10px] text-white/40">Refine your profile</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
+                <span className="text-[10px] text-white/40">Your career workspace</span>
+                <span className="text-[10px] text-violet-300">Powered by AI ✦</span>
+              </div>
+            </div>
+
+            <div className="absolute -left-1 top-16 z-20 hidden animate-[float_5s_ease-in-out_infinite] rounded-xl border border-violet-200/20 bg-[#17152E]/90 p-3 shadow-xl backdrop-blur-xl sm:block">
+              <div className="flex items-center gap-2">
+                <Sparkles size={15} className="text-violet-300" />
+                <span className="text-xs font-medium">AI Insights</span>
+              </div>
+            </div>
+
+            <div className="absolute -right-1 bottom-20 z-20 hidden animate-[float_6s_ease-in-out_infinite] rounded-xl border border-blue-200/20 bg-[#111B32]/90 p-3 shadow-xl backdrop-blur-xl sm:block">
+              <div className="flex items-center gap-2">
+                <Target size={15} className="text-blue-300" />
+                <span className="text-xs font-medium">Career Growth</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Features */}
+        <section id="features" className="scroll-mt-20 border-t border-white/[0.07] bg-white/[0.015] px-5 py-24 md:px-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">
+                Everything in one place
+              </p>
+              <h2 className="mt-4 text-3xl font-bold md:text-4xl">
+                Your career. <span className="text-violet-300">Your intelligence.</span>
+              </h2>
+              <p className="mt-4 text-sm leading-7 text-white/50">
+                Powerful tools designed to help you understand your profile,
+                improve your resume and prepare for your next opportunity.
+              </p>
+            </div>
+
+            <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {features.map((feature) => {
+                const Icon = feature.icon;
+                return (
+                  <div
+                    key={feature.title}
+                    className="group rounded-2xl border border-white/10 bg-white/[0.035] p-6 transition duration-300 hover:-translate-y-1 hover:border-violet-300/30 hover:bg-violet-500/[0.05]"
+                  >
+                    <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-violet-300/15 bg-violet-500/10 text-violet-300 transition group-hover:bg-violet-500/20">
+                      <Icon size={22} />
+                    </div>
+                    <h3 className="text-lg font-semibold">{feature.title}</h3>
+                    <p className="mt-3 text-sm leading-7 text-white/45">
+                      {feature.description}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section id="how-it-works" className="scroll-mt-20 px-5 py-24 md:px-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">
+                Simple workflow
+              </p>
+              <h2 className="mt-4 text-3xl font-bold md:text-4xl">
+                From resume to <span className="text-violet-300">ready.</span>
+              </h2>
+            </div>
+
+            <div className="mt-14 grid gap-5 md:grid-cols-3">
+              {[
+                ["01", "Upload your resume", "Start by adding your existing resume to your personal workspace."],
+                ["02", "Explore AI insights", "Understand your resume, discover improvements and match job descriptions."],
+                ["03", "Prepare for opportunities", "Improve your profile and practice for upcoming interviews."],
+              ].map(([number, title, description]) => (
+                <div key={number} className="rounded-2xl border border-white/10 bg-white/[0.035] p-7">
+                  <span className="text-3xl font-bold text-violet-400/60">{number}</span>
+                  <h3 className="mt-5 text-lg font-semibold">{title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-white/45">{description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="px-5 pb-24 md:px-8">
+          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl border border-violet-300/20 bg-gradient-to-br from-violet-600/20 via-[#17152D] to-blue-600/15 px-6 py-16 text-center md:px-12">
+            <div className="pointer-events-none absolute left-1/2 top-0 h-48 w-96 -translate-x-1/2 rounded-full bg-violet-500/20 blur-[100px]" />
+            <div className="relative">
+              <Sparkles className="mx-auto text-violet-300" size={30} />
+              <h2 className="mt-5 text-3xl font-bold md:text-4xl">
+                Your next opportunity starts here.
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-white/55">
+                Bring your resume, explore your possibilities and make your
+                next career move with greater clarity.
+              </p>
+              <a
+                href="#/app/overview"
+                className="mt-8 inline-flex items-center gap-2 rounded-xl border border-violet-200/40 bg-gradient-to-r from-violet-500 to-blue-500 px-7 py-4 text-sm font-semibold shadow-xl shadow-violet-900/30 transition hover:-translate-y-1 hover:brightness-110"
+              >
+                Get Started <ArrowRight size={17} />
+              </a>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer id="footer" className="relative z-10 border-t border-white/[0.08] px-5 py-9 md:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 text-center sm:flex-row sm:text-left">
+          <a href="#/" className="text-lg font-bold">
+            ResumeIQ <span className="text-violet-400">AI</span>
+          </a>
+          <p className="text-xs text-white/35">
+            © 2026 ResumeIQ AI. Your intelligent career workspace.
+          </p>
+          <a href="#/app/overview" className="text-xs text-white/50 transition hover:text-violet-300">
+            Open Workspace <ArrowRight className="ml-1 inline" size={13} />
+          </a>
+        </div>
+      </footer>
+
+      <style>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-12px); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+========== frontend/src/pages/Overview.jsx ==========
+
+import { TABS } from "../lib/tabs";
+import { Gauge } from "../components/Charts";
+import Uploader from "../components/Uploader";
+import { AlertCircle, ArrowUpRight, FileText, Sparkles, CheckCircle2 } from "lucide-react";
+
+export default function Overview({ resume, setResume, results, cfg }) {
+  const score =
+    results.ats?.atsScore ?? results.analysis?.atsScoreEstimate;
+
+  const done = Object.keys(results);
+
+  const suggestions = results.analysis?.suggestions || [];
+
+  const quickLinks = TABS.filter(
+    (tab) => !["overview", "history"].includes(tab.id)
+  );
+
+  return (
+    <div className="space-y-8">
+      {/* Welcome */}
+      <section>
+        <div className="mb-3 flex items-center gap-2 text-sm text-violet-300">
+          <Sparkles size={16} />
+          <span>Your AI Career Workspace</span>
+        </div>
+
+        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+          Welcome to your <span className="text-violet-300">workspace.</span>
+        </h1>
+
+        <p className="mt-2 text-sm text-white/50">
+          Analyze, improve and prepare your resume with AI.
+        </p>
+      </section>
+
+      {/* Backend Status */}
+      {cfg === false && (
+        <div className="flex items-start gap-3 rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-200">
+          <AlertCircle size={19} className="mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold">AI service unavailable</p>
+            <p className="mt-1 text-red-200/70">
+              Check your backend connection and Gemini API configuration.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Resume Upload */}
+      <section className="rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-500/[0.10] via-white/[0.035] to-blue-500/[0.06] p-5 shadow-2xl shadow-violet-950/20 md:p-7">
+        <div className="mb-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">
+            Get started
+          </p>
+          <h2 className="mt-2 text-xl font-bold">Your Resume</h2>
+          <p className="mt-1 text-sm text-white/50">
+            Upload your resume to unlock your AI career tools.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-[#0b0d1c]/70 p-3 md:p-5">
+          <Uploader resume={resume} setResume={setResume} />
+        </div>
+
+        <p className="mt-4 text-xs leading-5 text-white/40">
+          Your resume text is sent to Google Gemini for analysis. Avoid
+          uploading information you do not want processed by the AI service.
+        </p>
+      </section>
+
+      {/* Overview Cards */}
+      <section>
+        <div className="mb-4">
+          <h2 className="text-lg font-bold">Your Overview</h2>
+          <p className="mt-1 text-sm text-white/45">
+            A quick look at your current progress.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-white/50">Resume Status</span>
+              <FileText className="text-violet-300" size={20} />
+            </div>
+
+            <p className="mt-4 text-xl font-bold">
+              {resume ? "Uploaded" : "Not uploaded"}
+            </p>
+
+            <p className="mt-1 text-xs text-white/40">
+              {resume
+                ? "Your resume is ready for analysis."
+                : "Upload a resume to get started."}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-white/50">Completed Tools</span>
+              <CheckCircle2 className="text-emerald-300" size={20} />
+            </div>
+
+            <p className="mt-4 text-3xl font-bold">{done.length}</p>
+
+            <p className="mt-1 text-xs text-white/40">
+              Analyses completed in this session.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-white/50">ATS Estimate</span>
+              <Sparkles className="text-blue-300" size={20} />
+            </div>
+
+            {score != null ? (
+              <div className="mt-3">
+                <Gauge value={score} title="Latest ATS estimate" />
+              </div>
+            ) : (
+              <>
+                <p className="mt-4 text-xl font-bold">Not available</p>
+                <p className="mt-1 text-xs text-white/40">
+                  Run your resume analysis to see your score.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Suggestions */}
+      <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 md:p-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300">
+            <Sparkles size={20} />
+          </div>
+
+          <div>
+            <h2 className="font-bold">Improvement Insights</h2>
+            <p className="text-xs text-white/40">
+              Suggestions from your actual resume analysis.
+            </p>
+          </div>
+        </div>
+
+        {suggestions.length > 0 ? (
+          <ul className="mt-5 space-y-3">
+            {suggestions.slice(0, 5).map((suggestion, index) => (
+              <li
+                key={index}
+                className="flex gap-3 rounded-xl border border-white/[0.06] bg-black/10 p-3 text-sm text-white/75"
+              >
+                <CheckCircle2
+                  size={17}
+                  className="mt-0.5 shrink-0 text-violet-300"
+                />
+                {suggestion}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-5 rounded-xl border border-dashed border-white/10 p-5 text-sm text-white/40">
+            Your personalized improvement suggestions will appear here after
+            running the resume analyzer.
+          </p>
+        )}
+      </section>
+
+      {/* Quick Access */}
+      <section>
+        <div className="mb-4">
+          <h2 className="text-lg font-bold">Explore Your Workspace</h2>
+          <p className="mt-1 text-sm text-white/45">
+            Access your career tools in one place.
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {quickLinks.map((tab) => {
+            const Icon = tab.icon;
+
+            return (
+              <a
+                key={tab.id}
+                href={`#/app/${tab.id}`}
+                className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.035] p-4 transition duration-300 hover:-translate-y-1 hover:border-violet-400/30 hover:bg-violet-500/[0.08]"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-300 transition group-hover:bg-violet-500/20">
+                  <Icon size={19} />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">{tab.label}</p>
+                  <p className="mt-1 text-xs text-white/40">
+                    Open workspace
+                  </p>
+                </div>
+
+                <ArrowUpRight
+                  size={17}
+                  className="text-white/30 transition group-hover:text-violet-300"
+                />
+              </a>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Recent Activity */}
+      <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+        <h2 className="font-bold">Recent Activity</h2>
+
+        {done.length ? (
+          <div className="mt-4 space-y-3">
+            {done.map((id) => (
+              <div
+                key={id}
+                className="flex items-center justify-between border-b border-white/[0.06] pb-3 last:border-0 last:pb-0"
+              >
+                <span className="text-sm text-white/70">
+                  {TABS.find((tab) => tab.id === id)?.label || id}
+                </span>
+
+                <span className="text-xs text-emerald-300">Completed</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-white/40">
+            No activity yet. Your completed analyses will appear here.
+          </p>
+        )}
+      </section>
+    </div>
+  );
+}
+
+
+========== frontend/src/api.js ==========
+
+const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+const apiUrl = (path) => `${API_BASE}${path}`;
+
+const NET = "Cannot reach the server. Please try again.";
+
+async function handle(r) {
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || "Request failed.");
+  return d;
+}
+
+export const extractResume = (file, onProgress) =>
+  new Promise((resolve, reject) => {
+    const form = new FormData();
+    form.append("resume", file);
+
+    const x = new XMLHttpRequest();
+    x.open("POST", apiUrl("/api/extract"));
+
+    x.upload.onprogress = (e) =>
+      e.lengthComputable &&
+      onProgress?.(Math.round((e.loaded / e.total) * 100));
+
+    x.onload = () => {
+      let d = {};
+      try {
+        d = JSON.parse(x.responseText);
+      } catch {
+        /* ignore */
+      }
+
+      x.status >= 200 && x.status < 300
+        ? resolve(d)
+        : reject(new Error(d.error || "Upload failed."));
+    };
+
+    x.onerror = () => reject(new Error(NET));
+    x.send(form);
+  });
+
+export const runTask = (task, body) =>
+  fetch(apiUrl("/api/analyze"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ task, ...body }),
+  })
+    .catch(() => {
+      throw new Error(NET);
+    })
+    .then(handle)
+    .then((d) => d.result);
+
+export const health = () => fetch(apiUrl("/api/health")).then(handle);
+
+========== frontend/src/pages/Report.jsx ==========
+import { Printer } from "lucide-react";
+import { Btn } from "../components/ui";
+import { ToolCharts } from "../components/Charts";
+import { Render } from "../components/Render";
+import { TABS } from "../lib/tabs";
+
+export default function Report({ results, resume }) {
+  const ids = TABS.filter((t) => results[t.id]).map((t) => t.id);
+  if (!ids.length) return <div><h2 className="text-2xl font-extrabold">Reports</h2><p className="mt-3 text-sm text-muted">Run at least one analysis to build a report.</p></div>;
+  return <div>
+    <div className="no-print flex flex-wrap items-center justify-between gap-3"><h2 className="text-2xl font-extrabold">Reports</h2><Btn onClick={() => window.print()}><Printer size={15} /> Save as PDF</Btn></div>
+    <p className="no-print mb-4 text-sm text-muted">Choose “Save as PDF” in the print dialog.</p>
+    <h1 className="mb-1 text-2xl font-extrabold">ResumeIQ AI report</h1>
+    <p className="mb-6 text-sm text-muted">{resume?.name} · {new Date().toLocaleDateString()} · ATS scores are estimates, not guarantees.</p>
+    {ids.map((id) => <section key={id} className="mb-8 break-inside-avoid-page"><h3 className="mb-2 text-lg font-bold">{TABS.find((t) => t.id === id).label}</h3><ToolCharts id={id} res={results[id]} /><div className="mt-3"><Render v={results[id]} /></div></section>)}
+  </div>;
+}
+
+========== frontend/src/main.jsx ==========
+import React from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App.jsx";
+import "./index.css";
+createRoot(document.getElementById("root")).render(<App />);
